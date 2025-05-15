@@ -1,6 +1,64 @@
+# macOS
 .DS_Store
-*.xcuserstate
-.DS_Store
-*.xcuserstate
-yahgs.xcodeproj/xcuserdata/
-yahgs.xcodeproj/project.xcworkspace/xcuserdata/
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Spotlight
+.Spotlight-V100
+
+# Files that might appear on external volumes
+.Trashes
+
+# macOS Finder metadata
+Icon?
+ehthumbs.db
+Thumbs.db
+
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+
+# SwiftPM
+.swiftpm/
+.build/
+Package.resolved
+
+# Xcode automatic schemes
+xcshareddata/WorkspaceSettings.xcsettings
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+
+# Fastlane (if used)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Archive files
+*.xcarchive
+
+# Temporary files
+*.swp
+*.lock
+*.tmp
+*.bak
+
+# Logs
+*.log
