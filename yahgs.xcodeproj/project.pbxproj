@@ -33,9 +33,22 @@
 		9F66A9642DCDA81A001FAE91 /* yahgsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = yahgsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E4CBE4C42DD7BE95000FED72 /* Exceptions for "yahgs" folder in "yahgs" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9F66A94B2DCDA819001FAE91 /* yahgs */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9F66A94E2DCDA819001FAE91 /* yahgs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E4CBE4C42DD7BE95000FED72 /* Exceptions for "yahgs" folder in "yahgs" target */,
+			);
 			path = yahgs;
 			sourceTree = "<group>";
 		};
@@ -71,7 +84,6 @@
 			isa = PBXGroup;
 			children = (
 				9F66A94E2DCDA819001FAE91 /* yahgs */,
-				9F8941532DCE5BFC00F8CFB9 /* Frameworks */,
 				9F66A94D2DCDA819001FAE91 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -84,13 +96,6 @@
 				9F66A9642DCDA81A001FAE91 /* yahgsUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		9F8941532DCE5BFC00F8CFB9 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -391,19 +396,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = yahgs/yahgs.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UZNNCFPSMC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = yahgs/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Yahgs;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = yahgs.yahgs;
+				PRODUCT_BUNDLE_IDENTIFIER = Yahgs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -416,19 +428,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = yahgs/yahgs.entitlements;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = yahgs/yahgsRelease.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UZNNCFPSMC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = yahgs/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Yahgs;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = yahgs.yahgs;
+				PRODUCT_BUNDLE_IDENTIFIER = Yahgs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -510,7 +529,7 @@
 				9F66A96D2DCDA81A001FAE91 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		9F66A96E2DCDA81A001FAE91 /* Build configuration list for PBXNativeTarget "yahgs" */ = {
 			isa = XCConfigurationList;
@@ -519,7 +538,7 @@
 				9F66A9702DCDA81A001FAE91 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		9F66A9712DCDA81A001FAE91 /* Build configuration list for PBXNativeTarget "yahgsTests" */ = {
 			isa = XCConfigurationList;
@@ -528,7 +547,7 @@
 				9F66A9732DCDA81A001FAE91 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		9F66A9742DCDA81A001FAE91 /* Build configuration list for PBXNativeTarget "yahgsUITests" */ = {
 			isa = XCConfigurationList;
@@ -537,7 +556,7 @@
 				9F66A9762DCDA81A001FAE91 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 

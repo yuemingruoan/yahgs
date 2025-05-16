@@ -1,21 +1,13 @@
-# macOS
+# macOS 系统文件
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# Thumbnails
-._*
-
-# Spotlight
-.Spotlight-V100
-
-# Files that might appear on external volumes
-.Trashes
-
-# macOS Finder metadata
-Icon?
-ehthumbs.db
-Thumbs.db
+# 缓存、临时文件
+*.swp
+*.lock
+*.tmp
+*.bak
 
 # Xcode
 build/
@@ -29,36 +21,43 @@ DerivedData/
 *.perspectivev3
 !default.perspectivev3
 xcuserdata/
+*.xcuserdatad/
+*.xcscmblueprint
+*.xcworkspacedata
 
-# SwiftPM
+# Swift Package Manager
 .swiftpm/
 .build/
 Package.resolved
 
-# Xcode automatic schemes
-xcshareddata/WorkspaceSettings.xcsettings
-
-# CocoaPods (if used)
+# CocoaPods
 Pods/
 Podfile.lock
 
-# Carthage (if used)
+# Carthage
 Carthage/Build/
 
-# Fastlane (if used)
+# Fastlane
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-# Archive files
+# Xcode 自动生成的 schemes 配置文件
+xcshareddata/WorkspaceSettings.xcsettings
+
+# Xcode Archive 文件
 *.xcarchive
 
-# Temporary files
-*.swp
-*.lock
-*.tmp
-*.bak
-
-# Logs
+# 日志文件
 *.log
+
+# Info.plist 
+
+# 个人用户配置文件
+xcuserdata/
+
+# 其他常见隐藏文件和系统文件
+*.swp
+*.swo
+*.DS_Store

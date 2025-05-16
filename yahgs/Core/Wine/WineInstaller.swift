@@ -1,5 +1,5 @@
 //
-//  InstallWine.swift
+//  WineInstaller.swift
 //  yahgs
 //
 //  Created by 时雨 on 2025/5/9.
@@ -15,6 +15,8 @@ class DownloadProgressTracker: NSObject, URLSessionDataDelegate {
     private var downloadedData = Data()
     private var completion: ((Result<Data, Error>) -> Void)?
     
+    var onProgressUpdate: ((Double) -> Void)?
+    
     // 每秒打印进度
     private var progressTimer: Task<Void, Never>?
     
@@ -25,6 +27,7 @@ class DownloadProgressTracker: NSObject, URLSessionDataDelegate {
                 guard let self = self, self.totalBytesExpected > 0 else { continue }
                 let percentage = Double(self.totalBytesReceived) / Double(self.totalBytesExpected) * 100
                 print("Download progress: \(String(format: "%.2f", percentage))%")
+                self.onProgressUpdate?(percentage)
             }
         }
     }
@@ -71,7 +74,24 @@ class DownloadProgressTracker: NSObject, URLSessionDataDelegate {
     }
 }
 
-public func InstallWine() async throws {
+public func InstallWine(progressUpdate: @escaping (Double) -> Void) async throws {
+    // 获取容器的 Data 目录
+    let containerDataURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Containers/Yahgs/Data")
+    // 直接将 wineURL 设为容器 Data 目录，不再使用 yahgs 子目录
+    let wineURL = containerDataURL
+    
+    // 检查 wine 文件夹是否存在且不为空，避免重复安装
+    var isDirectory: ObjCBool = false
+    if FileManager.default.fileExists(atPath: wineURL.path, isDirectory: &isDirectory),
+       isDirectory.boolValue {
+        let contents = try FileManager.default.contentsOfDirectory(atPath: wineURL.path)
+        if !contents.isEmpty {
+            print("Wine 已经安装，跳过安装过程")
+            return
+        }
+    }
+    
     // 创建用于下载的 URLSession
     guard let download_url = URL(string: "https://vip.123pan.cn/1838809579/%E7%B1%B3%E6%B8%B8%E8%AE%BE%E7%BD%AE%E5%99%A8/wine.zip") else {
         throw URLError(.badURL)
@@ -79,6 +99,7 @@ public func InstallWine() async throws {
     
     // 使用进度追踪器下载
     let tracker = DownloadProgressTracker()
+    tracker.onProgressUpdate = progressUpdate
     let data = try await withCheckedThrowingContinuation { continuation in
         tracker.download(from: download_url) { result in
             switch result {
@@ -90,30 +111,16 @@ public func InstallWine() async throws {
         }
     }
     
-    // 获取应用的 Application Support 目录 URL
-    guard let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-        throw URLError(.fileDoesNotExist)
-    }
-    
-    // 创建 yahgs 文件夹的 URL
-    let yahgsURL = appSupportURL.appendingPathComponent("yahgs")
-    
-    // 检查 yahgs 文件夹是否存在，如果不存在则创建
-    try FileManager.default.createDirectory(at: yahgsURL, withIntermediateDirectories: true)
+    // 检查 wine 文件夹是否存在，如果不存在则创建
+    try FileManager.default.createDirectory(at: wineURL, withIntermediateDirectories: true)
     
     // 创建目标文件 URL
     let fileName = download_url.lastPathComponent
-    let destinationURL = yahgsURL.appendingPathComponent(fileName)
+    let destinationURL = wineURL.appendingPathComponent(fileName)
     
-    // 将下载的数据写入 yahgs 目录
+    // 将下载的数据写入 wine 目录
     try data.write(to: destinationURL)
     print("File saved to: \(destinationURL.path)")
-    
-    // 创建 wine 文件夹的 URL
-    let wineURL = yahgsURL.appendingPathComponent("wine")
-    
-    // 检查 wine 文件夹是否存在，如果不存在则创建
-    try FileManager.default.createDirectory(at: wineURL, withIntermediateDirectories: true)
     
     // 解压 zip 文件到 wine 文件夹
     do {
