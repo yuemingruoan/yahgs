@@ -1,28 +1,31 @@
 //
-//  yahgsApp.swift
+//  YahgsApp.swift
 //  yahgs
 //
 //  Created by 时雨 on 2025/5/9.
 //
 
+
 import SwiftUI
+import Foundation
 
 // MARK: - 应用主入口
 @main
-struct yahgsApp: App {
-    @StateObject private var launcherState = GameLauncherState()
+struct YahgsApp: App {
+    @StateObject private var launcherState = LauncherState()
     @State private var launchPhase: AppLaunchPhase = .welcome
     @State private var showSettings: Bool = false
 
-    // MARK: - 启动阶段枚举
-    enum AppLaunchPhase: Hashable {
-        case welcome
+    enum DownloadComponent: String, Hashable {
+        case wine
+        case dxmt
         case launcher
+        case game
     }
 
-    enum SettingsPage: Hashable {
+    enum SettingsPage: Hashable, Equatable {
         case general
-        case sectionInstaller(component: InstallableComponent)
+        case sectionInstaller(component: DownloadComponent)
     }
     
     @ViewBuilder
@@ -32,7 +35,7 @@ struct yahgsApp: App {
             LauncherHomeView(onSettingsRequested: {
                 showSettings = true
             })
-                .onAppear { print("显示 LauncherHomeView") }
+                .onAppear {  }
                 .ignoresSafeArea()
                 .frame(minWidth: 960, minHeight: 540)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -42,11 +45,11 @@ struct yahgsApp: App {
                 // isDone 为 true 时表示不再显示欢迎页
                 get: { launchPhase != .welcome },
                 set: { done in
-                    print("切换到 \(done ? "launcher" : "welcome") 阶段")
+                     
                     launchPhase = done ? .launcher : .welcome
                 }
             ))
-            .onAppear { print("显示 WelcomeScreenView") }
+            .onAppear {  }
             .frame(minWidth: 960, minHeight: 540)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()

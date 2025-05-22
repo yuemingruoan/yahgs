@@ -24,7 +24,7 @@ enum SettingsTab: String, CaseIterable, Hashable {
 struct SettingScreenView: View {
     let onDismiss: () -> Void
     @State private var selection: SettingsTab = .general
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
 
     var body: some View {
         ZStack {
@@ -101,7 +101,7 @@ struct SettingScreenView: View {
 }
 
 struct AppearanceSettingsView: View {
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
     private let backgroundsPath = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Yahgs/backgrounds")
     private let themeColors = ["cyan", "purple", "orange", "custom"]
     let defaultColors: [String: String] = [
@@ -259,7 +259,7 @@ struct AppearanceSettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
 
     var body: some View {
         ScrollView {
@@ -366,7 +366,7 @@ struct GeneralSettingsView: View {
 }
 
 struct OtherSettingsView: View {
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
     let games = ["原神", "崩坏：星穹铁道", "绝区零"]
     var body: some View {
         ScrollView {

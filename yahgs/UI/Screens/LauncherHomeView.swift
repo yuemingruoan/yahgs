@@ -9,31 +9,11 @@ import SwiftUI
 
 // MARK: - 启动器主界面入口
 struct LauncherHomeView: View {
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
     @State private var selectedItem: NavItem?
+    @State private var navItems: [NavItem] = []
 
     var onSettingsRequested: () -> Void
-
-    var navItems: [NavItem] {
-        LauncherHomeView.generateNavItems(from: launcherState.settings)
-    }
-
-    init(onSettingsRequested: @escaping () -> Void) {
-        self.onSettingsRequested = onSettingsRequested
-        let settings = LauncherSettings.load()
-        let items = LauncherHomeView.generateNavItems(from: settings)
-        if let pinned = settings.pinnedGame, let match = items.first(where: { $0.title == pinned }) {
-            _selectedItem = State(initialValue: match)
-        } else if let last = settings.lastSelectedGame, let match = items.first(where: { $0.title == last }) {
-            _selectedItem = State(initialValue: match)
-        } else {
-            _selectedItem = State(initialValue: items.first)
-        }
-    }
-
-    init() {
-        fatalError("Use init(onSettingsRequested:) instead")
-    }
 
     private static func generateNavItems(from settings: LauncherSettings) -> [NavItem] {
         let gameTitles = ["原神", "崩坏：星穹铁道", "绝区零"]
@@ -83,6 +63,18 @@ struct LauncherHomeView: View {
                         }
                     }
                 }
+            }
+        }
+        .onAppear {
+            let settings = launcherState.settings
+            let items = LauncherHomeView.generateNavItems(from: settings)
+            navItems = items
+            if let pinned = settings.pinnedGame, let match = items.first(where: { $0.title == pinned }) {
+                selectedItem = match
+            } else if let last = settings.lastSelectedGame, let match = items.first(where: { $0.title == last }) {
+                selectedItem = match
+            } else {
+                selectedItem = items.first
             }
         }
     }
@@ -135,7 +127,7 @@ private struct HoverGameButton: View {
 // MARK: - 启动器游戏详情组件
 struct LauncherGameDetailView: View {
     let item: NavItem
-    @EnvironmentObject var launcherState: GameLauncherState
+    @EnvironmentObject var launcherState: LauncherState
     @State private var isPinHover = false
     @State private var isStartHover = false
     @State private var isSettingHover = false
@@ -241,7 +233,7 @@ struct LauncherGameDetailView: View {
 extension LauncherHomeView {
     // MARK: - 背景图层
     struct LauncherBgLayer: View {
-        let launcherState: GameLauncherState
+        let launcherState: LauncherState
         let selectedItem: NavItem?
         let size: CGSize
         

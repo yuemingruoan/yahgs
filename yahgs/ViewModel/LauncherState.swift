@@ -1,5 +1,5 @@
 //
-//  GameLauncherState.swift
+//  LauncherState.swift
 //  yahgs
 //
 //  Created by Yuan Shine on 2025/5/11.
@@ -7,35 +7,38 @@
 
 import Foundation
 
-class GameLauncherState: ObservableObject {
+class LauncherState: ObservableObject {
     @Published var settings: LauncherSettings {
         didSet {
-            settings.save()
+            repository.save(settings)
         }
     }
 
-    init() {
-        self.settings = LauncherSettings.load()
+    private let repository: SettingsRepository
+
+    init(repository: SettingsRepository = DefaultSettingsRepository()) {
+        self.repository = repository
+        self.settings = repository.load()
     }
 
     func updatePinnedGame(to title: String) {
         settings.pinnedGame = title
-        settings.save()
+        repository.save(settings)
     }
 
     func updateLastSelectedGame(to title: String) {
         settings.lastSelectedGame = title
-        settings.save()
+        repository.save(settings)
     }
 
     func updateBackgroundPath(for title: String, path: String) {
         settings.customBackgroundPaths[title] = path
-        settings.save()
+        repository.save(settings)
     }
 
     func updateGamePath(for title: String, path: String) {
         settings.gamePaths[title] = path
-        settings.save()
+        repository.save(settings)
     }
 
     func refreshInstalledGameVersions() {
@@ -45,7 +48,7 @@ class GameLauncherState: ObservableObject {
                 settings.gameVersions[game] = version
             }
         }
-        settings.save()
+        repository.save(settings)
     }
 
     func getDefaultPath(for title: String) -> String? {
@@ -54,6 +57,10 @@ class GameLauncherState: ObservableObject {
 
     func updateGameVersion(for title: String, version: String) {
         settings.gameVersions[title] = version
-        settings.save()
+        repository.save(settings)
+    }
+
+    func saveSettings() {
+        repository.save(settings)
     }
 }
