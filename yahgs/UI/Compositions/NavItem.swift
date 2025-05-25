@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct NavItem: Identifiable, Hashable {
     var id: String { title }

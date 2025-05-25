@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 // MARK: - 启动动画页
 struct SplashScreenView: View {

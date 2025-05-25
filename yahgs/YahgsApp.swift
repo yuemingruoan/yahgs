@@ -9,12 +9,38 @@
 import SwiftUI
 import Foundation
 
+enum AppLaunchPhase: Hashable {
+    case welcome
+    case launcher
+}
+
 // MARK: - 应用主入口
 @main
 struct YahgsApp: App {
-    @StateObject private var launcherState = LauncherState()
+    @StateObject private var launcherViewModel = LauncherViewModel()
     @State private var launchPhase: AppLaunchPhase = .welcome
     @State private var showSettings: Bool = false
+
+    init() {
+        createProjectFolder()
+    }
+
+    private func createProjectFolder() {
+        let fileManager = FileManager.default
+        if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let projectFolderURL = appSupportURL.appendingPathComponent("Yahgs")
+            if !fileManager.fileExists(atPath: projectFolderURL.path) {
+                do {
+                    try fileManager.createDirectory(at: projectFolderURL, withIntermediateDirectories: true, attributes: nil)
+                    print("Created project folder at: \(projectFolderURL.path)")
+                } catch {
+                    print("Failed to create project folder: \(error.localizedDescription)")
+                }
+            } else {
+                print("Project folder already exists at: \(projectFolderURL.path)")
+            }
+        }
+    }
 
     enum DownloadComponent: String, Hashable {
         case wine
@@ -41,7 +67,7 @@ struct YahgsApp: App {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(.move(edge: .trailing))
         case .welcome:
-            WelcomeScreenView(isDone: Binding(
+            WelcomeScreenView(isWelcomeFlowComplete: Binding(
                 // isDone 为 true 时表示不再显示欢迎页
                 get: { launchPhase != .welcome },
                 set: { done in
@@ -86,7 +112,7 @@ struct YahgsApp: App {
                     }
                 }
             }
-            .environmentObject(launcherState)
+            .environmentObject(launcherViewModel)
         }
         // MARK: - 窗口样式配置
         .defaultSize(width: 960, height: 540)

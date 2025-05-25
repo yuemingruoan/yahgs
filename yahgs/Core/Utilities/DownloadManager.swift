@@ -144,13 +144,13 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         progress: @escaping (Double, Int64, Int64, Int64) -> Void
     ) async throws {
         try await withCheckedThrowingContinuation { continuation in
-            var resumed = false
+            var didResume = false
             let resumeQueue = DispatchQueue(label: "com.yahgs.download.resumeQueue")
 
             self.download(from: url, to: destination, progress: progress) { result in
                 resumeQueue.async {
-                    if resumed { return }
-                    resumed = true
+                    if didResume { return }
+                    didResume = true
                     DispatchQueue.main.async {
                         switch result {
                         case .success:
@@ -162,14 +162,17 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 }
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
-                resumeQueue.async {
-                    if !resumed {
-                        resumed = true
-                        continuation.resume(throwing: NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "下载超时，续体未恢复"]))
-                    }
-                }
-            }
+//            // 添加超时保护，防止极端情况continuation未被resume
+//            DispatchQueue.global().asyncAfter(deadline: .now() + 60) {
+//                resumeQueue.async {
+//                    if !didResume {
+//                        didResume = true
+//                        DispatchQueue.main.async {
+//                            continuation.resume(throwing: NSError(domain: "DownloadManager", code: -999, userInfo: [NSLocalizedDescriptionKey: "Download timeout"]))
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }

@@ -6,10 +6,11 @@
 //
 
 import SwiftUI
+import Foundation
 
 // MARK: - 启动器主界面入口
 struct LauncherHomeView: View {
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
     @State private var selectedItem: NavItem?
     @State private var navItems: [NavItem] = []
 
@@ -32,7 +33,7 @@ struct LauncherHomeView: View {
             GeometryReader { geo in
                 ZStack {
                     // MARK: - 背景图层
-                    LauncherBgLayer(launcherState: launcherState, selectedItem: selectedItem, size: geo.size)
+                    LauncherBgLayer(LauncherViewModel: LauncherViewModel, selectedItem: selectedItem, size: geo.size)
                     // MARK: - 内容区
                     HStack(spacing: 0) {
                         // MARK: - 左侧导航栏
@@ -54,7 +55,7 @@ struct LauncherHomeView: View {
                         if let selectedItem {
                             LauncherGameDetailView(item: selectedItem, onSettingsRequested: onSettingsRequested)
                                 .ignoresSafeArea() // 右侧内容区充满剩余屏幕
-                                .environmentObject(launcherState)
+                                .environmentObject(LauncherViewModel)
                         } else {
                             Text("未选择游戏")
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,7 +67,7 @@ struct LauncherHomeView: View {
             }
         }
         .onAppear {
-            let settings = launcherState.settings
+            let settings = LauncherViewModel.settings
             let items = LauncherHomeView.generateNavItems(from: settings)
             navItems = items
             if let pinned = settings.pinnedGame, let match = items.first(where: { $0.title == pinned }) {
@@ -81,7 +82,7 @@ struct LauncherHomeView: View {
 
     private func setSelectedItem(_ item: NavItem) {
         selectedItem = item
-        launcherState.updateLastSelectedGame(to: item.title)
+        LauncherViewModel.updateLastSelectedGame(to: item.title)
     }
 }
 
@@ -127,13 +128,13 @@ private struct HoverGameButton: View {
 // MARK: - 启动器游戏详情组件
 struct LauncherGameDetailView: View {
     let item: NavItem
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
     @State private var isPinHover = false
     @State private var isStartHover = false
     @State private var isSettingHover = false
     
     var isPinned: Bool {
-        launcherState.settings.pinnedGame == item.title
+        LauncherViewModel.settings.pinnedGame == item.title
     }
     
     var onSettingsRequested: () -> Void
@@ -149,7 +150,7 @@ struct LauncherGameDetailView: View {
                         Text(item.title)
                             .font(.largeTitle).bold()
                             .foregroundColor(.white)
-                        if let version = launcherState.settings.gameVersions[item.title] {
+                        if let version = LauncherViewModel.settings.gameVersions[item.title] {
                             Text("版本：\(version)")
                                 .font(.title3)
                                 .foregroundColor(.white.opacity(0.85))
@@ -201,9 +202,9 @@ struct LauncherGameDetailView: View {
                     Spacer()
                     Button(action: {
                         if isPinned {
-                            launcherState.updatePinnedGame(to: "")
+                            LauncherViewModel.updatePinnedGame(to: "")
                         } else {
-                            launcherState.updatePinnedGame(to: item.title)
+                            LauncherViewModel.updatePinnedGame(to: item.title)
                         }
                     }) {
                         Image(systemName: isPinned ? "pin.fill" : "pin")
@@ -233,12 +234,12 @@ struct LauncherGameDetailView: View {
 extension LauncherHomeView {
     // MARK: - 背景图层
     struct LauncherBgLayer: View {
-        let launcherState: LauncherState
+        let LauncherViewModel: LauncherViewModel
         let selectedItem: NavItem?
         let size: CGSize
         
         var body: some View {
-            if let bgPath = launcherState.settings.customBackgroundPaths[selectedItem?.title ?? ""],
+            if let bgPath = LauncherViewModel.settings.customBackgroundPaths[selectedItem?.title ?? ""],
                let nsImage = NSImage(contentsOfFile: bgPath) {
                 Image(nsImage: nsImage)
                     .resizable()

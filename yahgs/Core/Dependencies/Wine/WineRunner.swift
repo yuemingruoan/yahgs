@@ -138,7 +138,67 @@ class WineRunner {
     // MARK: - 初始化 Wine 环境
     /// 初始化 WinePrefix 并设置 Windows 版本为 Windows 10
     func initializeWineEnvironment() throws {
-        // 空实现
+        // 1. 确保 WINEPREFIX 目录存在
+        let winePrefixPath = environment["WINEPREFIX"] ?? ""
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: winePrefixPath) {
+            try fileManager.createDirectory(atPath: winePrefixPath, withIntermediateDirectories: true)
+        }
+
+        // 2. 执行 winecfg --no-ui 进行初始化
+        let (output, status) = try runWineCommand(args: ["winecfg", "--no-ui"])
+        if status != 0 {
+            throw NSError(domain: "WineRunner", code: Int(status), userInfo: [
+                NSLocalizedDescriptionKey: "winecfg 初始化失败，输出：\(output)"
+            ])
+        }
+
+        // 3. 设置 Windows 版本信息
+        try changeRegistryValue(
+            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
+            name: "CurrentVersion",
+            data: "10.0",
+            type: .string
+        )
+        try changeRegistryValue(
+            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
+            name: "CurrentBuildNumber",
+            data: "19041",
+            type: .string
+        )
+        try changeRegistryValue(
+            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
+            name: "ProductName",
+            data: "Windows 10",
+            type: .string
+        )
+
+        // 4. 启用 Retina 模式（Mac Driver 下）
+        try changeRegistryValue(
+            key: "HKCU\\Software\\Wine\\Mac Driver",
+            name: "RetinaMode",
+            data: "Y",
+            type: .string
+        )
+
+        // 5. 设置 DPI 为 192（LogPixels，DWORD 类型）
+        try changeRegistryValue(
+            key: "HKCU\\Control Panel\\Desktop",
+            name: "LogPixels",
+            data: "192",
+            type: .dword
+        )
+
+        // 6. 映射左侧 Command 键为 Control 键
+        try changeRegistryValue(
+            key: "HKCU\\Software\\Wine\\Mac Driver",
+            name: "CommandIsCtrl",
+            data: "Y",
+            type: .string
+        )
+
+        // 7. 日志
+        print("Wine 环境初始化成功，WINEPREFIX: \(winePrefixPath)，DPI 设置为192，启用 Retina 模式，Command 键映射为 Control")
     }
 }
 

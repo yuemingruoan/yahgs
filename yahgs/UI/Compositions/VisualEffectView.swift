@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct VisualEffectView: NSViewRepresentable {
     var material: NSVisualEffectView.Material

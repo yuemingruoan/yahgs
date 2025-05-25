@@ -1,15 +1,14 @@
 //
-//  WelcomeAgreementSection.swift
+//  WelcomeStepAgreement.swift
 //  yahgs
 //
 //  Created by Steve Tan on 2025/5/16.
 //
 
-
-
 import SwiftUI
+import Foundation
 
-struct WelcomeAgreementSection: View {
+struct WelcomeStepAgreement: View {
     var welcomeTitle: some View {
         Text("欢迎与使用须知")
             .font(.largeTitle)

@@ -6,20 +6,13 @@
 //
 
 import Foundation
+import Zip
 
 public struct DxmtInitializer {
     private let repository: SettingsRepository
 
     public init(repository: SettingsRepository) {
         self.repository = repository
-    }
-
-    // 保存安装版本
-    private func saveInstalledVersion(_ version: String) {
-        var settings = repository.load()
-        settings.dxmtVersion = version
-        repository.save(settings)
-        print("DXMT version saved: \(version)")
     }
 
     // 递归扁平化目录，复制所有 dll 和 so 文件到 dxmtURL 根目录
@@ -46,16 +39,51 @@ public struct DxmtInitializer {
         }
     }
 
-    // 初始化过程（同步）
-    public func initialize(from dxmtURL: URL) throws {
+    // 初始化过程（异步）
+    public func initialize(progressUpdate: @escaping (String, Double) -> Void) async throws {
         let fileManager = FileManager.default
         let containerDataURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Yahgs")
+
+        let dxmtURL = containerDataURL.appendingPathComponent("dxmt")
+        // 检查 dxmt 目录是否存在且非空，若是则跳过初始化
+        if fileManager.fileExists(atPath: dxmtURL.path) {
+            let contents = try fileManager.contentsOfDirectory(at: dxmtURL, includingPropertiesForKeys: nil)
+            if !contents.isEmpty {
+                progressUpdate("已有初始化，跳过", 1.0)
+                return
+            }
+        }
+
+        progressUpdate("开始初始化", 0.0)
+
+        // 临时 .app 目录路径，指向 Wine Devel.app（可与 Wine 共享）
+        let tempAppURL = containerDataURL.appendingPathComponent("Wine Devel.app")
+
+        // 如果存在旧的 dxmt 目录，先删除
+        if fileManager.fileExists(atPath: dxmtURL.path) {
+            try fileManager.removeItem(at: dxmtURL)
+        }
+        progressUpdate("删除旧目录", 0.1)
+
+        // 将 Wine Devel.app/Contents/Resources/dxmt 移动到 Application Support 的 dxmt 目录
+        let dxmtSourceURL = tempAppURL.appendingPathComponent("Contents/Resources/dxmt")
+        if fileManager.fileExists(atPath: dxmtSourceURL.path) {
+            try fileManager.moveItem(at: dxmtSourceURL, to: dxmtURL)
+        }
+        progressUpdate("移动资源文件", 0.3)
+
+        // 删除临时 .app 解压目录
+        if fileManager.fileExists(atPath: tempAppURL.path) {
+            try fileManager.removeItem(at: tempAppURL)
+        }
+        progressUpdate("删除临时文件", 0.5)
 
         // --- 将 dxmt 内容同步复制到 gameprefix ---
         let gamePrefixPath = containerDataURL.appendingPathComponent("gameprefix")
         let system32Path = gamePrefixPath.appendingPathComponent("drive_c/windows/system32")
         try fileManager.createDirectory(at: system32Path, withIntermediateDirectories: true)
+        progressUpdate("创建游戏目录", 0.55)
 
         let dxmtFiles = try fileManager.contentsOfDirectory(at: dxmtURL, includingPropertiesForKeys: nil)
         for file in dxmtFiles {
@@ -68,6 +96,7 @@ public struct DxmtInitializer {
                 try fileManager.copyItem(at: file, to: dest)
             }
         }
+        progressUpdate("复制系统 DLL", 0.6)
 
         // --- winemetal.dll 和 .so ---
         let winePath = containerDataURL.appendingPathComponent("wine")
@@ -91,6 +120,7 @@ public struct DxmtInitializer {
             }
             try fileManager.copyItem(at: soSource, to: soDest)
         }
+        progressUpdate("复制 winemetal 文件", 0.65)
 
         // --- nvngx.dll 到 wine 主路径 ---
         let nvngxSource = dxmtURL.appendingPathComponent("nvngx.dll")
@@ -102,10 +132,18 @@ public struct DxmtInitializer {
             }
             try fileManager.copyItem(at: nvngxSource, to: nvngxDest)
         }
+        progressUpdate("复制 nvngx.dll 文件", 0.7)
 
         try flattenDXMTDirectory(at: dxmtURL)
+        progressUpdate("扁平化目录", 0.8)
 
-        // 可选：调用保存版本方法
-        // saveInstalledVersion("版本号") // 具体版本号由调用方传入
+        // 执行 regedit 初始化操作
+        let regeditProcess = Process()
+        regeditProcess.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        regeditProcess.arguments = ["regedit", "/S"]
+        try regeditProcess.run()
+        regeditProcess.waitUntilExit()
+        progressUpdate("完成", 1.0)
+
     }
 }

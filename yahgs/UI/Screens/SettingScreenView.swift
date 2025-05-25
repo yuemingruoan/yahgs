@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 import AppKit
 import UniformTypeIdentifiers
 
@@ -24,7 +25,7 @@ enum SettingsTab: String, CaseIterable, Hashable {
 struct SettingScreenView: View {
     let onDismiss: () -> Void
     @State private var selection: SettingsTab = .general
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
 
     var body: some View {
         ZStack {
@@ -101,7 +102,7 @@ struct SettingScreenView: View {
 }
 
 struct AppearanceSettingsView: View {
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
     private let backgroundsPath = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Yahgs/backgrounds")
     private let themeColors = ["cyan", "purple", "orange", "custom"]
     let defaultColors: [String: String] = [
@@ -127,7 +128,7 @@ struct AppearanceSettingsView: View {
                                 .frame(height: 40)
                                 .overlay(
                                     HStack {
-                                        if let path = launcherState.settings.customBackgroundPaths[game] {
+                                        if let path = LauncherViewModel.settings.customBackgroundPaths[game] {
                                             Text((path as NSString).lastPathComponent)
                                                 .font(.system(size: 15))
                                                 .foregroundColor(.secondary)
@@ -163,10 +164,10 @@ struct AppearanceSettingsView: View {
                                 .frame(width: 150, alignment: .leading)
                             ColorPicker("", selection: Binding(
                                 get: {
-                                    color(from: launcherState.settings.gameThemeColors[game] ?? defaultColors[game] ?? "#64C4FA")
+                                    color(from: LauncherViewModel.settings.gameThemeColors[game] ?? defaultColors[game] ?? "#64C4FA")
                                 },
                                 set: {
-                                    launcherState.settings.gameThemeColors[game] = hexString(from: $0)
+                                    LauncherViewModel.settings.gameThemeColors[game] = hexString(from: $0)
                                 }
                             ))
                             .labelsHidden()
@@ -180,7 +181,7 @@ struct AppearanceSettingsView: View {
                     Spacer()
                     Button("恢复默认背景") {
                         for game in ["原神", "崩坏：星穹铁道", "绝区零"] {
-                            launcherState.settings.customBackgroundPaths[game] = nil
+                            LauncherViewModel.settings.customBackgroundPaths[game] = nil
                         }
                     }
                     .font(.system(size: 15))
@@ -191,7 +192,7 @@ struct AppearanceSettingsView: View {
                 HStack {
                     Spacer()
                     Button("恢复默认主题色") {
-                        launcherState.settings.gameThemeColors = [
+                        LauncherViewModel.settings.gameThemeColors = [
                             "原神": defaultColors["原神"]!,
                             "崩坏：星穹铁道": defaultColors["崩坏：星穹铁道"]!,
                             "绝区零": defaultColors["绝区零"]!
@@ -225,7 +226,7 @@ struct AppearanceSettingsView: View {
                 }
                 let destinationURL = gameBackgroundFolder.appendingPathComponent(url.lastPathComponent)
                 try? FileManager.default.copyItem(at: url, to: destinationURL)
-                launcherState.updateBackgroundPath(for: game, path: destinationURL.path)
+                LauncherViewModel.updateBackgroundPath(for: game, path: destinationURL.path)
             }
         }
     }
@@ -259,7 +260,7 @@ struct AppearanceSettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
 
     var body: some View {
         ScrollView {
@@ -273,7 +274,7 @@ struct GeneralSettingsView: View {
                         Text("启用 Metal HUD")
                             .font(.system(size: 15))
                         Spacer()
-                        Toggle("", isOn: $launcherState.settings.metalHUDEnabled)
+                        Toggle("", isOn: $LauncherViewModel.settings.metalHUDEnabled)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .frame(width: 50)
@@ -283,7 +284,7 @@ struct GeneralSettingsView: View {
                         Text("启用 Retina 显示")
                             .font(.system(size: 15))
                         Spacer()
-                        Toggle("", isOn: $launcherState.settings.retinaEnabled)
+                        Toggle("", isOn: $LauncherViewModel.settings.retinaEnabled)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .frame(width: 50)
@@ -293,7 +294,7 @@ struct GeneralSettingsView: View {
                         Text("DPI 设置")
                             .font(.system(size: 15))
                         Spacer()
-                        Picker("选择 DPI", selection: $launcherState.settings.dpiValue) {
+                        Picker("选择 DPI", selection: $LauncherViewModel.settings.dpiValue) {
                             Text("96 DPI").tag(96)
                             Text("144 DPI").tag(144)
                             Text("192 DPI").tag(192)
@@ -318,7 +319,7 @@ struct GeneralSettingsView: View {
                         Text("映射左侧 Command 键为 Control 键")
                             .font(.system(size: 15))
                         Spacer()
-                        Toggle("", isOn: $launcherState.settings.mapCommandToControl)
+                        Toggle("", isOn: $LauncherViewModel.settings.mapCommandToControl)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .frame(width: 50)
@@ -333,8 +334,8 @@ struct GeneralSettingsView: View {
                             .font(.system(size: 15))
                         Spacer()
                         Picker("选择语言", selection: Binding(
-                            get: { launcherState.settings.preferredLanguage ?? "en" },
-                            set: { launcherState.settings.preferredLanguage = $0 }
+                            get: { LauncherViewModel.settings.preferredLanguage ?? "en" },
+                            set: { LauncherViewModel.settings.preferredLanguage = $0 }
                         )) {
                             Text("中文").tag("zh")
                             Text("日本語").tag("ja")
@@ -351,7 +352,7 @@ struct GeneralSettingsView: View {
                         Text("启动后自动检查更新")
                             .font(.system(size: 15))
                         Spacer()
-                        Toggle("", isOn: $launcherState.settings.autoCheckUpdate)
+                        Toggle("", isOn: $LauncherViewModel.settings.autoCheckUpdate)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .frame(width: 50)
@@ -366,7 +367,7 @@ struct GeneralSettingsView: View {
 }
 
 struct OtherSettingsView: View {
-    @EnvironmentObject var launcherState: LauncherState
+    @EnvironmentObject var LauncherViewModel: LauncherViewModel
     let games = ["原神", "崩坏：星穹铁道", "绝区零"]
     var body: some View {
         ScrollView {
@@ -386,8 +387,8 @@ struct OtherSettingsView: View {
                                 .font(.system(size: 15))
                             Spacer()
                             Toggle("", isOn: Binding(
-                                get: { launcherState.settings.acBypassDisabled[game] ?? false },
-                                set: { launcherState.settings.acBypassDisabled[game] = $0 }
+                                get: { LauncherViewModel.settings.acBypassDisabled[game] ?? false },
+                                set: { LauncherViewModel.settings.acBypassDisabled[game] = $0 }
                             ))
                             .labelsHidden()
                             .toggleStyle(.switch)

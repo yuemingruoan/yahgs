@@ -1,5 +1,5 @@
 //
-//  LauncherState.swift
+//  LauncherViewModel.swift
 //  yahgs
 //
 //  Created by Yuan Shine on 2025/5/11.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-class LauncherState: ObservableObject {
+class LauncherViewModel: ObservableObject {
     @Published var settings: LauncherSettings {
         didSet {
             repository.save(settings)
