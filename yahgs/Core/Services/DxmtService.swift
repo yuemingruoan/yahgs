@@ -12,28 +12,15 @@ public class DxmtService {
     private let initializer: DxmtInitializer
 
     public init(downloadService: DownloadService,
-                repository: SettingsRepository,
-                initializer: DxmtInitializer? = nil) {
+                initializer: DxmtInitializer = DxmtInitializer()) {
         self.downloadService = downloadService
-        if let initializer = initializer {
-            self.initializer = initializer
-        } else {
-            self.initializer = DxmtInitializer(repository: repository)
-        }
+        self.initializer = initializer
     }
 
-    public func installDxmt(progress: @escaping (String, Double) -> Void) async throws {
-        let destinationURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Yahgs/dxmt.tar.xz")
-
-        try await downloadService.downloadComponent(.dxmt, to: destinationURL) { percent, downloaded, total, speed in
-            let formattedDownloaded = ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)
-            let formattedTotal = ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
-            let formattedSpeed = self.formatSpeed(speed)
-            let formatted = "\(formattedDownloaded) / \(formattedTotal) • \(formattedSpeed)"
-            progress(formatted, percent)
+    public func installDxmt(from archivePath: URL, progress: @escaping (Double) -> Void) async throws {
+        try await initializer.initialize(from: archivePath) {  percent in
+            progress(percent)
         }
-        try await initializer.initialize(progressUpdate: progress)
     }
     
     private func formatSpeed(_ speed: Int64) -> String {

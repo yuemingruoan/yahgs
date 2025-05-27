@@ -7,44 +7,35 @@
 
 import Foundation
 
-public enum UnzipError: Error {
-    case unsupportedFormat(String)
-    case failed(Int32)
-}
-
 public struct Unzip {
-    public static let supportedExtensions = ["gz", "bz2", "xz", "zip"]
-
     public static func extract(from source: URL, to destination: URL) async throws {
-        print("Unzipping \(source.lastPathComponent) to \(destination.path)...")
-
-        let process = Process()
         let fileExtension = source.pathExtension.lowercased()
         var args: [String]
 
         switch fileExtension {
-        case "gz":
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
-            args = ["-xzf", source.path, "-C", destination.path]
-        case "bz2":
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
-            args = ["-xjf", source.path, "-C", destination.path]
         case "xz":
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
-            args = ["-xJf", source.path, "-C", destination.path]
-        case "zip":
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            args = [source.path, "-d", destination.path]
+            args = ["-xJmf", source.path, "--unlink", "-C", destination.path]
+        case "gz":
+            args = ["-xzmf", source.path, "--unlink", "-C", destination.path]
+        case "bz2":
+            args = ["-xjmf", source.path, "--unlink", "-C", destination.path]
         default:
-            throw UnzipError.unsupportedFormat(fileExtension)
+            throw NSError(domain: "Unzip", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported archive format"])
         }
 
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
         process.arguments = args
+
         try process.run()
         process.waitUntilExit()
 
         if process.terminationStatus != 0 {
-            throw UnzipError.failed(process.terminationStatus)
+            throw NSError(domain: "Unzip", code: Int(process.terminationStatus), userInfo: [NSLocalizedDescriptionKey: "Failed to extract archive"])
         }
+
+        // 删除压缩包
+        try? FileManager.default.removeItem(at: source)
+        print("Deleted source archive: \(source.path)")
     }
 }

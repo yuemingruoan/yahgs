@@ -9,170 +9,179 @@ import Foundation
 
 final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     static let shared = DownloadManager()
-    
-    private var session: URLSession!
-    private var tasks: [URL: URLSessionDownloadTask] = [:]
+
+    private var lastUpdateTime: [URL: Date] = [:]
+    private var lastDownloadedBytes: [URL: Int64] = [:]
+    private var lastDispatchTime: [URL: Date] = [:]
+
     private var progressHandlers: [URL: (Double, Int64, Int64, Int64) -> Void] = [:]
     private var completionHandlers: [URL: (Result<URL, Error>) -> Void] = [:]
-    
-    private var lastDownloadInfo: [URL: (bytesWritten: Int64, time: Date)] = [:]
-    private var resumeDataMap: [URL: Data] = [:]
-    private var lastProgressUpdateTime: [URL: Date] = [:]
-    
-    override init() {
-        super.init()
-        let config = URLSessionConfiguration.default
-        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }
-    
+    private lazy var session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+    }()
+
     func download(from url: URL, to destination: URL,
                   progress: @escaping (Double, Int64, Int64, Int64) -> Void,
                   completion: @escaping (Result<URL, Error>) -> Void) {
-        let task: URLSessionDownloadTask
-        if let resumeData = resumeDataMap[url] {
-            task = session.downloadTask(withResumeData: resumeData)
-            resumeDataMap.removeValue(forKey: url)
-        } else {
-            task = session.downloadTask(with: url)
-        }
-        task.taskDescription = destination.path
-        tasks[url] = task
+
         progressHandlers[url] = progress
         completionHandlers[url] = completion
-        task.resume()
-    }
-    
-    func pause(url: URL) {
-        tasks[url]?.suspend()
-        print("[DownloadManager] 暂停下载：\(url.lastPathComponent)")
-    }
-    
-    func resume(url: URL) {
-        tasks[url]?.resume()
-        print("[DownloadManager] 继续下载：\(url.lastPathComponent)")
-    }
-    
-    func cancel(url: URL) {
-        tasks[url]?.cancel { data in
-            if let data = data {
-                self.resumeDataMap[url] = data
-            }
-            self.cleanup(url: url)
-        }
-        print("[DownloadManager] 取消下载：\(url.lastPathComponent)")
-    }
-    
-    private func cleanup(url: URL) {
-        tasks.removeValue(forKey: url)
-        progressHandlers.removeValue(forKey: url)
-        completionHandlers.removeValue(forKey: url)
-        lastDownloadInfo.removeValue(forKey: url)
-        resumeDataMap.removeValue(forKey: url)
-        lastProgressUpdateTime.removeValue(forKey: url)
-    }
-    
-    // MARK: - Delegate Methods
-    
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
-                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
-                    totalBytesExpectedToWrite: Int64) {
-        guard let url = downloadTask.originalRequest?.url else { return }
-        // 复制文件逻辑
-        
-        let now = Date()
-        let lastInfo = lastDownloadInfo[url] ?? (0, now)
-        let elapsed = now.timeIntervalSince(lastInfo.time)
-        
-        // 节流逻辑：0.3秒内不重复回调进度
-        if let lastUpdate = lastProgressUpdateTime[url], now.timeIntervalSince(lastUpdate) < 0.3 {
+
+        // 原 aria2c 代码注释开始
+        /*
+        let destinationDirectory = destination.deletingLastPathComponent().path
+        let fileName = destination.lastPathComponent
+
+        // 启动 aria2c 下载
+        let process = Process()
+        guard let aria2cPath = Bundle.main.path(forResource: "aria2c", ofType: nil) else {
+            print("[DownloadManager] Error: aria2c not found in app bundle")
+            completion(.failure(NSError(domain: "Aria2cNotFound", code: -1)))
             return
         }
-        lastProgressUpdateTime[url] = now
-        
-        let deltaBytes = totalBytesWritten - lastInfo.bytesWritten
-        let speed = elapsed > 0 ? Int64(Double(deltaBytes) / elapsed) : 0
-        
-        lastDownloadInfo[url] = (totalBytesWritten, now)
-        
-        let percent = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        DispatchQueue.main.async {
-            self.progressHandlers[url]?(percent, totalBytesWritten, totalBytesExpectedToWrite, speed)
-        }
-    }
-    
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
-                    didFinishDownloadingTo location: URL) {
-        guard let url = downloadTask.originalRequest?.url,
-              let destinationPath = downloadTask.taskDescription else { return }
+        process.executableURL = URL(fileURLWithPath: aria2cPath)
+        process.arguments = [
+            "--dir=\(destinationDirectory)",
+            "--out=\(fileName)",
+            "--allow-overwrite=true",
+            "--summary-interval=1",
+            "--follow-metalink=mem",
+            "--follow-torrent=mem",
+            "--enable-http-keep-alive=true",
+            "--max-connection-per-server=4",
+            "--check-certificate=false",
+            "--auto-file-renaming=false",
+            "--header=User-Agent: Mozilla/5.0",
+            url.absoluteString
+        ]
 
-        // 补发最后一次进度更新，防止节流漏掉100%
-        let totalBytes = downloadTask.countOfBytesExpectedToReceive
-        DispatchQueue.main.async {
-            self.progressHandlers[url]?(1.0, totalBytes, totalBytes, 0)
-        }
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
 
-        let destination = URL(fileURLWithPath: destinationPath)
-        do {
-            if FileManager.default.fileExists(atPath: destination.path) {
-                try FileManager.default.removeItem(at: destination)
+        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else {
+                return
             }
-            try FileManager.default.moveItem(at: location, to: destination)
-            DispatchQueue.main.async {
-                self.completionHandlers[url]?(.success(destination))
-            }
-        } catch {
-            DispatchQueue.main.async {
-                self.completionHandlers[url]?(.failure(error))
-            }
-        }
-        cleanup(url: url)
-    }
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let url = task.originalRequest?.url else { return }
-        if let error = error {
-            DispatchQueue.main.async {
-                self.completionHandlers[url]?(.failure(error))
-            }
-        }
-        cleanup(url: url)
-    }
-    // Async/await wrapper for download
-    func downloadFile(
-        from url: URL,
-        to destination: URL,
-        progress: @escaping (Double, Int64, Int64, Int64) -> Void
-    ) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            var didResume = false
-            let resumeQueue = DispatchQueue(label: "com.yahgs.download.resumeQueue")
-
-            self.download(from: url, to: destination, progress: progress) { result in
-                resumeQueue.async {
-                    if didResume { return }
-                    didResume = true
+            output.enumerateLines { line, _ in
+                print("[aria2c] \(line)")
+                if let info = Aria2ProgressParser.parseProgress(from: line) {
                     DispatchQueue.main.async {
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case .failure(let error):
-                            continuation.resume(throwing: error)
-                        }
+                        progress(info.percent, info.downloadedBytes, info.totalBytes, info.speedBytesPerSec)
                     }
                 }
             }
-
-//            // 添加超时保护，防止极端情况continuation未被resume
-//            DispatchQueue.global().asyncAfter(deadline: .now() + 60) {
-//                resumeQueue.async {
-//                    if !didResume {
-//                        didResume = true
-//                        DispatchQueue.main.async {
-//                            continuation.resume(throwing: NSError(domain: "DownloadManager", code: -999, userInfo: [NSLocalizedDescriptionKey: "Download timeout"]))
-//                        }
-//                    }
-//                }
-//            }
         }
+
+        print("[DownloadManager] Launching aria2c at: \(process.executableURL?.path ?? "nil")")
+        print("[DownloadManager] With arguments: \(process.arguments?.joined(separator: " ") ?? "nil")")
+
+        do {
+            try process.run()
+        } catch {
+            completion(.failure(error))
+            return
+        }
+
+        process.terminationHandler = { proc in
+            DispatchQueue.main.async {
+                completion(.success(destination))
+            }
+        }
+        */
+        // 原 aria2c 代码注释结束
+
+        // 使用 URLSessionDownloadTask 实现下载
+        let task = session.downloadTask(with: url)
+        task.taskDescription = destination.path
+        task.resume()
+    }
+
+    // MARK: - URLSessionDownloadDelegate
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64,
+                    totalBytesExpectedToWrite: Int64) {
+
+        guard let url = downloadTask.originalRequest?.url,
+              let progressHandler = progressHandlers[url] else { return }
+
+        let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+
+        let now = Date()
+        let lastTime = lastUpdateTime[url] ?? now
+        let lastBytes = lastDownloadedBytes[url] ?? 0
+        let timeInterval = now.timeIntervalSince(lastTime)
+        let byteDelta = totalBytesWritten - lastBytes
+        let speedBytesPerSec = timeInterval > 0 ? Int64(Double(byteDelta) / timeInterval) : 0
+
+        lastUpdateTime[url] = now
+        lastDownloadedBytes[url] = totalBytesWritten
+
+        let lastDispatch = lastDispatchTime[url]
+
+        if lastDispatch == nil || now.timeIntervalSince(lastDispatch!) >= 0.3 {
+            lastDispatchTime[url] = now
+            DispatchQueue.main.async {
+                progressHandler(progress, totalBytesWritten, totalBytesExpectedToWrite, speedBytesPerSec)
+            }
+        }
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {
+
+        guard let destinationPath = downloadTask.taskDescription else { return }
+        let destinationURL = URL(fileURLWithPath: destinationPath)
+        let url = downloadTask.originalRequest?.url
+
+        do {
+            let fileManager = FileManager.default
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try fileManager.removeItem(at: destinationURL)
+            }
+            try fileManager.moveItem(at: location, to: destinationURL)
+            if let url = url, let completionHandler = completionHandlers[url] {
+                DispatchQueue.main.async {
+                    completionHandler(.success(destinationURL))
+                }
+                completionHandlers.removeValue(forKey: url)
+                progressHandlers.removeValue(forKey: url)
+            }
+        } catch {
+            if let url = url, let completionHandler = completionHandlers[url] {
+                DispatchQueue.main.async {
+                    completionHandler(.failure(error))
+                }
+                completionHandlers.removeValue(forKey: url)
+                progressHandlers.removeValue(forKey: url)
+            }
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard let error = error,
+              let url = task.originalRequest?.url,
+              let completionHandler = completionHandlers[url] else { return }
+        DispatchQueue.main.async {
+            completionHandler(.failure(error))
+        }
+        completionHandlers.removeValue(forKey: url)
+        progressHandlers.removeValue(forKey: url)
+    }
+
+    func pause(url: URL) {
+        print("[DownloadManager] 暂停下载功能不支持")
+    }
+
+    func resume(url: URL) {
+        print("[DownloadManager] 继续下载功能不支持")
+    }
+
+    func cancel(url: URL) {
+        print("[DownloadManager] 取消下载功能不支持")
     }
 }

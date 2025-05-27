@@ -11,16 +11,32 @@ import Combine
 @MainActor
 public class DownloadViewModel: ObservableObject {
     // 绑定给UI显示的进度百分比，范围0.0 ~ 1.0
-    @Published public private(set) var progress: Double = 0.0
+    @Published public private(set) var progress: Double = 0.0 {
+        didSet {
+            print("[DownloadViewModel] progress didSet: \(progress)")
+        }
+    }
 
     // 格式化后的已下载大小文本，如 "32.5 MB"
-    @Published public private(set) var downloadedSize: String = "0 MB"
+    @Published public private(set) var downloadedSize: String = "0 MB" {
+        didSet {
+            print("[DownloadViewModel] downloadedSize didSet: \(downloadedSize)")
+        }
+    }
 
     // 格式化后的总大小文本，如 "120 MB"
-    @Published public private(set) var totalSize: String = "0 MB"
+    @Published public private(set) var totalSize: String = "0 MB" {
+        didSet {
+            print("[DownloadViewModel] totalSize didSet: \(totalSize)")
+        }
+    }
 
     // 格式化后的当前下载速度，如 "3.2 MB/s"
-    @Published public private(set) var speed: String = "0 MB/s"
+    @Published public private(set) var speed: String = "0 MB/s" {
+        didSet {
+            print("[DownloadViewModel] speed didSet: \(speed)")
+        }
+    }
 
     // 当前下载状态，方便UI显示不同状态
     @Published public private(set) var downloadState: DownloadState = .idle
@@ -76,9 +92,8 @@ public class DownloadViewModel: ObservableObject {
     // MARK: - 下载控制接口
 
     /// 开始下载指定组件，指定存储路径
-    public func startDownload(component: DownloadComponent, to destination: URL) {
+    public func startDownload(component: DownloadComponent, to destination: URL) async throws {
         print("[DownloadViewModel] startDownload called for component: \(component.rawValue)")
-        // 如果正在下载，拒绝新请求
         guard downloadState != .downloading else {
             print("[DownloadViewModel] downloadState is already downloading, ignoring new start request")
             return
@@ -93,34 +108,24 @@ public class DownloadViewModel: ObservableObject {
         totalSize = "0 MB"
         speed = "0 MB/s"
 
-        Task {
-            do {
-                downloadState = .downloading
-                try await downloadService.downloadComponent(component, to: destination, progress: { [weak self] percent, downloaded, total, speedBytes in
-                    DispatchQueue.main.async {
-                        guard let self = self else { return }
-                        print("[DownloadViewModel] progress update: \(percent), downloaded: \(downloaded), total: \(total), speed: \(speedBytes)")
-                        self.progress = percent
-                        self.downloadedSize = self.formatByteCount(downloaded)
-                        self.totalSize = self.formatByteCount(total)
-                        self.speed = self.formatSpeed(speedBytes)
-                    }
-                })
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    print("[DownloadViewModel] download completed")
-                    self.progress = 1.0
-                    self.downloadState = .completed
-                    self.speed = "0 MB/s"
-                }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    print("[DownloadViewModel] download failed: \(error.localizedDescription)")
-                    self.downloadState = .failed
-                    self.errorMessage = error.localizedDescription
-                }
+        downloadState = .downloading
+        try await downloadService.downloadComponent(component, to: destination, progress: { [weak self] percent, downloaded, total, speedBytes in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                print("[DownloadViewModel] progress update: \(percent), downloaded: \(downloaded), total: \(total), speed: \(speedBytes)")
+                self.progress = percent
+                self.downloadedSize = self.formatByteCount(downloaded)
+                self.totalSize = self.formatByteCount(total)
+                self.speed = self.formatSpeed(speedBytes)
             }
+        })
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            print("[DownloadViewModel] download completed")
+            self.progress = 1.0
+            self.downloadState = .completed
+            self.speed = "0 MB/s"
         }
     }
 
@@ -168,5 +173,9 @@ public class DownloadViewModel: ObservableObject {
         errorMessage = nil
         currentComponent = nil
         currentDestination = nil
+    }
+    @MainActor
+    public func reset() async {
+        resetState()
     }
 }

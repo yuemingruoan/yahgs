@@ -27,7 +27,17 @@ public final class DownloadService {
     // 下载组件
     func downloadComponent(_ component: DownloadComponent, to destination: URL, progress: @escaping (Double, Int64, Int64, Int64) -> Void) async throws {
         let url = self.url(for: component)
-        try await downloadManager.downloadFile(from: url, to: destination, progress: progress)
+
+        try await withCheckedThrowingContinuation { continuation in
+            downloadManager.download(from: url, to: destination, progress: progress) { result in
+                switch result {
+                case .success:
+                    continuation.resume()
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
     func install(_ component: DownloadComponent, to destination: URL, progress: @escaping (Double, Int64, Int64, Int64) -> Void) async throws -> URL {

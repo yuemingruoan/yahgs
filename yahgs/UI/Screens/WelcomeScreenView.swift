@@ -19,23 +19,27 @@ enum WelcomeStep {
 
 struct WelcomeScreenView: View {
     @Binding var isWelcomeFlowComplete: Bool
-    @State private var currentStep: WelcomeStep = .welcome  // .splash 可用于后续补充启动动画
+    @State private var currentStep: WelcomeStep = .splash  // 初始为 splash 展示启动动画
 
     var body: some View {
+        let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let yahgsDir = appSupportDir.appendingPathComponent("yahgs", isDirectory: true)
+
         switch currentStep {
         case .splash:
-            Color.white // 占位，后续可替换为 SplashView
+            Color.white
                 .onAppear {
+                    // 确保目录存在
+                    try? FileManager.default.createDirectory(at: yahgsDir, withIntermediateDirectories: true)
+
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         currentStep = .welcome
                     }
                 }
-
         case .welcome:
             WelcomeStepWelcome {
                 currentStep = .agreement
             }
-
         case .agreement:
             WelcomeStepAgreement()
                 .overlay(
@@ -51,17 +55,14 @@ struct WelcomeScreenView: View {
                         .padding(.bottom, 30)
                     }
                 )
-
         case .wineSetup:
-            WineSetupView(onCompletion: {
+            SetupView(component: .wine, downloadDestination: yahgsDir.appendingPathComponent("wine.tar.xz")) {
                 currentStep = .dxmtSetup
-            })
-
+            }
         case .dxmtSetup:
-            DxmtSetupView(onCompletion: {
+            SetupView(component: .dxmt, downloadDestination: yahgsDir.appendingPathComponent("dxmt.tar.gz")) {
                 isWelcomeFlowComplete = true
-            })
-
+            }
         case .done:
             EmptyView()
         }

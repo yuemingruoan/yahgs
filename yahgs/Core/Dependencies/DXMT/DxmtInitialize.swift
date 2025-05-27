@@ -6,14 +6,9 @@
 //
 
 import Foundation
-import Zip
 
 public struct DxmtInitializer {
-    private let repository: SettingsRepository
-
-    public init(repository: SettingsRepository) {
-        self.repository = repository
-    }
+    public init() {}
 
     // 递归扁平化目录，复制所有 dll 和 so 文件到 dxmtURL 根目录
     private func flattenDXMTDirectory(at dxmtURL: URL) throws {
@@ -40,50 +35,77 @@ public struct DxmtInitializer {
     }
 
     // 初始化过程（异步）
-    public func initialize(progressUpdate: @escaping (String, Double) -> Void) async throws {
+    public func initialize(from archivePath: URL, progressUpdate: @escaping (Double) -> Void) async throws {
         let fileManager = FileManager.default
         let containerDataURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Yahgs")
 
         let dxmtURL = containerDataURL.appendingPathComponent("dxmt")
+
         // 检查 dxmt 目录是否存在且非空，若是则跳过初始化
         if fileManager.fileExists(atPath: dxmtURL.path) {
             let contents = try fileManager.contentsOfDirectory(at: dxmtURL, includingPropertiesForKeys: nil)
             if !contents.isEmpty {
-                progressUpdate("已有初始化，跳过", 1.0)
+                print("[DxmtInitializer] dxmt already initialized, skipping")
+                progressUpdate(1.0)
                 return
             }
         }
+        print("[DxmtInitializer] starting dxmt initialization")
+        progressUpdate(0.0)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
-        progressUpdate("开始初始化", 0.0)
+        // 解压 Dxmt 安装包
+        print("[DxmtInitializer] extracting dxmt archive")
+        progressUpdate(0.1)
+        try await Task.sleep(nanoseconds: 500_000_000)
+        try await Unzip.extract(from: archivePath, to: containerDataURL)
 
-        // 临时 .app 目录路径，指向 Wine Devel.app（可与 Wine 共享）
-        let tempAppURL = containerDataURL.appendingPathComponent("Wine Devel.app")
+        // 修改解压路径为 v0.51 文件夹路径
+        let tempExtractPath = containerDataURL.appendingPathComponent("v0.51")
 
         // 如果存在旧的 dxmt 目录，先删除
         if fileManager.fileExists(atPath: dxmtURL.path) {
+            print("[DxmtInitializer] removing old dxmt directory")
             try fileManager.removeItem(at: dxmtURL)
         }
-        progressUpdate("删除旧目录", 0.1)
+        progressUpdate(0.1)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
-        // 将 Wine Devel.app/Contents/Resources/dxmt 移动到 Application Support 的 dxmt 目录
-        let dxmtSourceURL = tempAppURL.appendingPathComponent("Contents/Resources/dxmt")
+        // 合并：将解压目录整体移动到 dxmt 目录，并扁平化 dxmt 目录
+        let dxmtSourceURL = tempExtractPath
         if fileManager.fileExists(atPath: dxmtSourceURL.path) {
-            try fileManager.moveItem(at: dxmtSourceURL, to: dxmtURL)
+            try flattenDXMTDirectory(at: dxmtSourceURL)
+            try fileManager.createDirectory(at: dxmtURL, withIntermediateDirectories: true)
+            let flattenedContents = try fileManager.contentsOfDirectory(at: dxmtSourceURL, includingPropertiesForKeys: nil)
+            for file in flattenedContents {
+                let dest = dxmtURL.appendingPathComponent(file.lastPathComponent)
+                if fileManager.fileExists(atPath: dest.path) {
+                    try fileManager.removeItem(at: dest)
+                }
+                try fileManager.moveItem(at: file, to: dest)
+            }
+            try fileManager.removeItem(at: dxmtSourceURL)
         }
-        progressUpdate("移动资源文件", 0.3)
+        progressUpdate(0.3)
+        try await Task.sleep(nanoseconds: 500_000_000)
+        print("[DxmtInitializer] flattened and moved dxmt resources")
 
-        // 删除临时 .app 解压目录
-        if fileManager.fileExists(atPath: tempAppURL.path) {
-            try fileManager.removeItem(at: tempAppURL)
+        // 删除临时解压目录（已移动，通常不存在）
+        if fileManager.fileExists(atPath: tempExtractPath.path) {
+            print("[DxmtInitializer] removing temporary extraction directory")
+            try fileManager.removeItem(at: tempExtractPath)
         }
-        progressUpdate("删除临时文件", 0.5)
+        progressUpdate(0.4)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
-        // --- 将 dxmt 内容同步复制到 gameprefix ---
-        let gamePrefixPath = containerDataURL.appendingPathComponent("gameprefix")
-        let system32Path = gamePrefixPath.appendingPathComponent("drive_c/windows/system32")
+        // --- 将 dxmt 内容同步复制到 wineprefix ---
+        let winePrefix = containerDataURL.appendingPathComponent("wineprefix")
+        let system32Path = winePrefix.appendingPathComponent("drive_c/windows/system32")
         try fileManager.createDirectory(at: system32Path, withIntermediateDirectories: true)
-        progressUpdate("创建游戏目录", 0.55)
+        print("[DxmtInitializer] creating wine prefix directories")
+        progressUpdate(0.5)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         let dxmtFiles = try fileManager.contentsOfDirectory(at: dxmtURL, includingPropertiesForKeys: nil)
         for file in dxmtFiles {
@@ -96,7 +118,9 @@ public struct DxmtInitializer {
                 try fileManager.copyItem(at: file, to: dest)
             }
         }
-        progressUpdate("复制系统 DLL", 0.6)
+        print("[DxmtInitializer] copied system DLLs")
+        progressUpdate(0.7)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         // --- winemetal.dll 和 .so ---
         let winePath = containerDataURL.appendingPathComponent("wine")
@@ -120,7 +144,9 @@ public struct DxmtInitializer {
             }
             try fileManager.copyItem(at: soSource, to: soDest)
         }
-        progressUpdate("复制 winemetal 文件", 0.65)
+        print("[DxmtInitializer] copied winemetal files")
+        progressUpdate(0.8)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         // --- nvngx.dll 到 wine 主路径 ---
         let nvngxSource = dxmtURL.appendingPathComponent("nvngx.dll")
@@ -132,18 +158,13 @@ public struct DxmtInitializer {
             }
             try fileManager.copyItem(at: nvngxSource, to: nvngxDest)
         }
-        progressUpdate("复制 nvngx.dll 文件", 0.7)
+        print("[DxmtInitializer] copied nvngx.dll file")
+        progressUpdate(0.9)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
-        try flattenDXMTDirectory(at: dxmtURL)
-        progressUpdate("扁平化目录", 0.8)
-
-        // 执行 regedit 初始化操作
-        let regeditProcess = Process()
-        regeditProcess.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        regeditProcess.arguments = ["regedit", "/S"]
-        try regeditProcess.run()
-        regeditProcess.waitUntilExit()
-        progressUpdate("完成", 1.0)
+        // 初始化完成
+        print("[DxmtInitializer] initialization complete")
+        progressUpdate(1.0)
 
     }
 }

@@ -30,7 +30,7 @@ class WineRunner {
     
     // MARK: - 初始化
     init(winePath: URL, winePrefix: URL) {
-        self.wineExecutableURL = winePath.appendingPathComponent("bin/wine")
+        self.wineExecutableURL = winePath
         self.environment = [
             "WINEPREFIX": winePrefix.path
         ]
@@ -136,75 +136,44 @@ class WineRunner {
     }
     
     // MARK: - 初始化 Wine 环境
-    /// 初始化 WinePrefix 并设置 Windows 版本为 Windows 10
+    /// 使用 shell 脚本初始化 Wine 环境
     func initializeWineEnvironment() throws {
-        // 1. 确保 WINEPREFIX 目录存在
-        let winePrefixPath = environment["WINEPREFIX"] ?? ""
+        guard let winePrefix = environment["WINEPREFIX"] else {
+            throw NSError(domain: "WineRunner", code: -1, userInfo: [NSLocalizedDescriptionKey: "WINEPREFIX 未设置"])
+        }
         let fileManager = FileManager.default
-        if !fileManager.fileExists(atPath: winePrefixPath) {
-            try fileManager.createDirectory(atPath: winePrefixPath, withIntermediateDirectories: true)
+        if !fileManager.fileExists(atPath: winePrefix) {
+            try fileManager.createDirectory(atPath: winePrefix, withIntermediateDirectories: true)
         }
 
-        // 2. 执行 winecfg --no-ui 进行初始化
-        let (output, status) = try runWineCommand(args: ["winecfg", "--no-ui"])
-        if status != 0 {
-            throw NSError(domain: "WineRunner", code: Int(status), userInfo: [
-                NSLocalizedDescriptionKey: "winecfg 初始化失败，输出：\(output)"
-            ])
-        }
+        let wineLibPath = wineExecutableURL.deletingLastPathComponent().appendingPathComponent("../lib").path
 
-        // 3. 设置 Windows 版本信息
-        try changeRegistryValue(
-            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
-            name: "CurrentVersion",
-            data: "10.0",
-            type: .string
-        )
-        try changeRegistryValue(
-            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
-            name: "CurrentBuildNumber",
-            data: "19041",
-            type: .string
-        )
-        try changeRegistryValue(
-            key: "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion",
-            name: "ProductName",
-            data: "Windows 10",
-            type: .string
-        )
+        let quotedPrefix = "\"\(winePrefix)\""
+        let quotedLibPath = "\"\(wineLibPath)\""
+        let winebootPath = wineExecutableURL.deletingLastPathComponent().appendingPathComponent("wineboot").path
+        let quotedWineboot = "\"\(winebootPath)\""
+        let quotedWine = "\"\(wineExecutableURL.path)\""
 
-        // 4. 启用 Retina 模式（Mac Driver 下）
-        try changeRegistryValue(
-            key: "HKCU\\Software\\Wine\\Mac Driver",
-            name: "RetinaMode",
-            data: "Y",
-            type: .string
-        )
+        print("winebootPath: \(winebootPath)")
+        print("wineExecutable: \(wineExecutableURL.path)")
 
-        // 5. 设置 DPI 为 192（LogPixels，DWORD 类型）
-        try changeRegistryValue(
-            key: "HKCU\\Control Panel\\Desktop",
-            name: "LogPixels",
-            data: "192",
-            type: .dword
-        )
+        let envPrefix = "export WINEPREFIX=\(quotedPrefix); export DYLD_FALLBACK_LIBRARY_PATH=\(quotedLibPath);"
 
-        // 6. 映射左侧 Command 键为 Control 键
-        try changeRegistryValue(
-            key: "HKCU\\Software\\Wine\\Mac Driver",
-            name: "CommandIsCtrl",
-            data: "Y",
-            type: .string
-        )
+        print("开始执行 wineboot -u 初始化命令")
+        try Shell.run("/bin/bash", arguments: ["-c", "\(envPrefix) \(quotedWineboot) -u"])
+        print("wineboot -u 初始化命令执行完成")
 
-        // 7. 日志
-        print("Wine 环境初始化成功，WINEPREFIX: \(winePrefixPath)，DPI 设置为192，启用 Retina 模式，Command 键映射为 Control")
-    }
-}
+        print("开始执行 reg add 注册表命令")
 
-extension WineRunner {
-    // MARK: - 安装 Wine 并写入游戏 WinePrefix 路径
-    func InstallWine(progressUpdate: ((Double) -> Void)? = nil) throws {
-        // 空实现
+        // 新增环境变量用于禁用 GUI 弹窗
+        var env = environment
+        env["WINEDEBUG"] = "-all"
+        env["WINEDLLOVERRIDES"] = "mshtml,mscoree="
+
+        try Shell.run("/bin/bash", arguments: ["-c", "\(envPrefix) \(quotedWine) reg add \"HKCU\\\\Software\\\\Wine\\\\Wine\\\\Config\" /v Version /d win10 /f"])
+
+        print("reg add 注册表命令执行完成")
+
+        print("Wine 环境初始化成功，WINEPREFIX: \(winePrefix)，使用 shell 脚本初始化")
     }
 }

@@ -17,18 +17,10 @@ public class WineService {
         self.initializer = initializer
     }
 
-    public func installWine(progress: @escaping (String, Double) -> Void) async throws {
-        let destinationURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Yahgs/wine.tar.xz")
-
-        try await downloadService.downloadComponent(.wine, to: destinationURL) { percent, downloaded, total, speed in
-            let formattedDownloaded = ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)
-            let formattedTotal = ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
-            let formattedSpeed = self.formatSpeed(speed)
-            let formatted = "\(formattedDownloaded) / \(formattedTotal) • \(formattedSpeed)"
-            progress(formatted, percent)
+    public func installWine(from archivePath: URL, progress: @escaping (Double) -> Void) async throws {
+        try await initializer.initialize(from: archivePath) { percent in
+            progress(percent)
         }
-        try await initializer.initialize(progressUpdate: progress)
     }
     
     private func formatSpeed(_ speed: Int64) -> String {
