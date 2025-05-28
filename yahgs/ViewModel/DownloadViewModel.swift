@@ -17,22 +17,22 @@ public class DownloadViewModel: ObservableObject {
         }
     }
 
-    // 格式化后的已下载大小文本，如 "32.5 MB"
-    @Published public private(set) var downloadedSize: String = "0 MB" {
+    // 格式化后的已下载大小文本，如 "32.5 MiB"
+    @Published public private(set) var downloadedSize: String = "0 MiB" {
         didSet {
             print("[DownloadViewModel] downloadedSize didSet: \(downloadedSize)")
         }
     }
 
-    // 格式化后的总大小文本，如 "120 MB"
-    @Published public private(set) var totalSize: String = "0 MB" {
+    // 格式化后的总大小文本，如 "120 MiB"
+    @Published public private(set) var totalSize: String = "0 MiB" {
         didSet {
             print("[DownloadViewModel] totalSize didSet: \(totalSize)")
         }
     }
 
-    // 格式化后的当前下载速度，如 "3.2 MB/s"
-    @Published public private(set) var speed: String = "0 MB/s" {
+    // 格式化后的当前下载速度，如 "3.2 MiB/s"
+    @Published public private(set) var speed: String = "0 MiB/s" {
         didSet {
             print("[DownloadViewModel] speed didSet: \(speed)")
         }
@@ -53,25 +53,31 @@ public class DownloadViewModel: ObservableObject {
     // 当前下载目标路径
     private var currentDestination: URL?
 
-    // 格式化字节数为 MB 字符串
+    // 格式化字节数为自适应单位字符串
     public func formatByteCount(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useMB]
-        formatter.countStyle = .file
+        formatter.allowedUnits = .useAll
+        formatter.countStyle = .binary
         formatter.includesUnit = true
+        formatter.includesActualByteCount = false
         return formatter.string(fromByteCount: bytes)
     }
 
     public func formatSpeed(_ bytesPerSecond: Int64) -> String {
-        let units = ["B/s", "KB/s", "MB/s", "GB/s"]
-        var speed = Double(bytesPerSecond)
+        let units = ["B/s", "KiB/s", "MiB/s", "GiB/s"]
+        let byteCount = Double(bytesPerSecond)
         var unitIndex = 0
 
-        while speed >= 1024.0 && unitIndex < units.count - 1 {
-            speed /= 1024.0
-            unitIndex += 1
+        for i in (0..<units.count).reversed() {
+            let threshold = pow(1024.0, Double(i))
+            let value = byteCount / threshold
+            if value >= 10.0 {
+                unitIndex = i
+                break
+            }
         }
 
+        let speed = byteCount / pow(1024.0, Double(unitIndex))
         let formatter = NumberFormatter()
         formatter.maximumSignificantDigits = 4
         formatter.usesSignificantDigits = true
@@ -104,9 +110,9 @@ public class DownloadViewModel: ObservableObject {
         downloadState = .waiting
         errorMessage = nil
         progress = 0
-        downloadedSize = "0 MB"
-        totalSize = "0 MB"
-        speed = "0 MB/s"
+        downloadedSize = "0 MiB"
+        totalSize = "0 MiB"
+        speed = "0 MiB/s"
 
         downloadState = .downloading
         try await downloadService.downloadComponent(component, to: destination, progress: { [weak self] percent, downloaded, total, speedBytes in
@@ -114,8 +120,8 @@ public class DownloadViewModel: ObservableObject {
                 guard let self = self else { return }
                 print("[DownloadViewModel] progress update: \(percent), downloaded: \(downloaded), total: \(total), speed: \(speedBytes)")
                 self.progress = percent
-                self.downloadedSize = self.formatByteCount(downloaded)
-                self.totalSize = self.formatByteCount(total)
+                self.downloadedSize = self.formatBytes(downloaded)
+                self.totalSize = self.formatBytes(total)
                 self.speed = self.formatSpeed(speedBytes)
             }
         })
@@ -125,7 +131,7 @@ public class DownloadViewModel: ObservableObject {
             print("[DownloadViewModel] download completed")
             self.progress = 1.0
             self.downloadState = .completed
-            self.speed = "0 MB/s"
+            self.speed = "0 MiB/s"
         }
     }
 
@@ -166,9 +172,9 @@ public class DownloadViewModel: ObservableObject {
     private func resetState() {
         print("[DownloadViewModel] resetState called")
         progress = 0
-        downloadedSize = "0 MB"
-        totalSize = "0 MB"
-        speed = "0 MB/s"
+        downloadedSize = "0 MiB"
+        totalSize = "0 MiB"
+        speed = "0 MiB/s"
         downloadState = .idle
         errorMessage = nil
         currentComponent = nil
@@ -177,5 +183,31 @@ public class DownloadViewModel: ObservableObject {
     @MainActor
     public func reset() async {
         resetState()
+    }
+}
+
+private extension DownloadViewModel {
+    /// 格式化字节数为带二进制单位（B, KiB, MiB, GiB）的字符串
+    func formatBytes(_ bytes: Int64) -> String {
+        let units = ["B", "KiB", "MiB", "GiB"]
+        let byteCount = Double(bytes)
+        var unitIndex = 0
+
+        for i in (0..<units.count).reversed() {
+            let threshold = pow(1024.0, Double(i))
+            if byteCount >= threshold {
+                unitIndex = i
+                break
+            }
+        }
+
+        let value = byteCount / pow(1024.0, Double(unitIndex))
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 2
+        formatter.numberStyle = .decimal
+
+        let numberString = formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return "\(numberString) \(units[unitIndex])"
     }
 }

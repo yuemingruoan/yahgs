@@ -108,7 +108,6 @@
 				9F66A9482DCDA819001FAE91 /* Sources */,
 				9F66A9492DCDA819001FAE91 /* Frameworks */,
 				9F66A94A2DCDA819001FAE91 /* Resources */,
-				E4FA75CA2DE2B35800E1AA63 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -235,27 +234,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		E4FA75CA2DE2B35800E1AA63 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "// !\"$*\"\n// Make sure aria2c in the bundle is executable\nchmod +x \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/aria2c\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9F66A9482DCDA819001FAE91 /* Sources */ = {

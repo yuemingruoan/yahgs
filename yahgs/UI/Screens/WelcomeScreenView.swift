@@ -27,15 +27,25 @@ struct WelcomeScreenView: View {
 
         switch currentStep {
         case .splash:
-            Color.white
-                .onAppear {
-                    // 确保目录存在
-                    try? FileManager.default.createDirectory(at: yahgsDir, withIntermediateDirectories: true)
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        currentStep = .welcome
-                    }
+            ZStack {
+                Color.white
+                VStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.5)
+                    Text("启动中...")
+                        .font(.headline)
+                        .padding(.top, 8)
                 }
+            }
+            .onAppear {
+                // 确保目录存在
+                try? FileManager.default.createDirectory(at: yahgsDir, withIntermediateDirectories: true)
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    currentStep = .welcome
+                }
+            }
         case .welcome:
             WelcomeStepWelcome {
                 currentStep = .agreement

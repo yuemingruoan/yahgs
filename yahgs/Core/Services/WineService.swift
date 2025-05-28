@@ -26,12 +26,25 @@ public class WineService {
     private func formatSpeed(_ speed: Int64) -> String {
         if speed == 0 { return "0 B/s" }
 
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.countStyle = .file
-        formatter.includesUnit = true
+        let units = ["B/s", "KiB/s", "MiB/s", "GiB/s"]
+        let byteCount = Double(speed)
+        var unitIndex = 0
 
-        let speedString = formatter.string(fromByteCount: speed)
-        return "\(speedString)/s"
+        for i in (0..<units.count).reversed() {
+            let threshold = pow(1024.0, Double(i))
+            if byteCount >= threshold {
+                unitIndex = i
+                break
+            }
+        }
+
+        let value = byteCount / pow(1024.0, Double(unitIndex))
+        let formatter = NumberFormatter()
+        formatter.maximumSignificantDigits = 4
+        formatter.usesSignificantDigits = true
+        formatter.numberStyle = .decimal
+
+        let numberString = formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return "\(numberString) \(units[unitIndex])"
     }
 }
